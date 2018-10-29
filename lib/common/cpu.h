@@ -16,6 +16,7 @@
  * https://github.com/facebook/folly/blob/master/folly/CpuId.h
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "mem.h"
@@ -109,8 +110,14 @@ MEM_STATIC ZSTD_cpuid_t ZSTD_cpuid(void) {
     }
 }
 
+#ifdef ZSTD_REPRODUCIBLE_PGO
+#define REPRODUCIBLE_PGO_CHECK if(getenv("ZSTD_NO_DYNAMIC_CPU") != NULL) return 0;
+#else
+#define REPRODUCIBLE_PGO_CHECK
+#endif
 #define X(name, r, bit)                                                        \
   MEM_STATIC int ZSTD_cpuid_##name(ZSTD_cpuid_t const cpuid) {                 \
+    REPRODUCIBLE_PGO_CHECK                                                     \
     return ((cpuid.r) & (1U << bit)) != 0;                                     \
   }
 

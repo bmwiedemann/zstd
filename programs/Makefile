@@ -228,18 +228,18 @@ zstd-dll : $(ZSTD_CLI_OBJ)
 
 
 ## zstd-pgo: zstd executable optimized with PGO.
+ifdef SOURCE_DATE_EPOCH
+    PGO_CFLAGS=-DZSTD_REPRODUCIBLE_PGO
+endif
 zstd-pgo :
 	$(MAKE) clean
-	$(MAKE) zstd MOREFLAGS=-fprofile-generate
-	./zstd -b19i1 $(PROFILE_WITH)
-	./zstd -b16i1 $(PROFILE_WITH)
-	./zstd -b9i2 $(PROFILE_WITH)
-	./zstd -b $(PROFILE_WITH)
-	./zstd -b7i2 $(PROFILE_WITH)
-	./zstd -b5 $(PROFILE_WITH)
+	$(MAKE) zstd MOREFLAGS="$(PGO_CFLAGS) -fprofile-generate"
+	export ZSTD_NO_DYNAMIC_CPU=1 ; z="./zstd -c --single-thread" ;\
+	$$z -19 $(PROFILE_WITH) | $$z -d > /dev/null ;\
+	$$z     $(PROFILE_WITH) | $$z -d > /dev/null
 	$(RM) zstd *.o $(ZSTDDECOMP_O) $(ZSTDDIR)/compress/*.o
 	case $(CC) in *clang*) if ! [ -e default.profdata ]; then llvm-profdata merge -output=default.profdata default*.profraw; fi ;; esac
-	$(MAKE) zstd MOREFLAGS=-fprofile-use
+	$(MAKE) zstd MOREFLAGS="$(PGO_CFLAGS) -fprofile-use"
 
 ## zstd-small: minimal target, supporting only zstd compression and decompression. no bench. no legacy. no other format.
 zstd-small: CFLAGS = -Os -s
